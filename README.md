@@ -37,6 +37,25 @@ services/<name>    MCP/service registration docs and examples
 projects/<name>    source code, build, tests, runtime
 ```
 
+Some projects are intentionally just standalone repositories, such as `alphahelper`. Do not force those into the three-layer capability model. For a simple standalone repo, onboarding only needs to:
+
+1. Check Git and GitHub access.
+2. Clone the repo into the standard workspace.
+3. Tell the user to open that folder in Codex.
+4. Guide future update, edit, verify, commit, and push workflow from inside that repo.
+
+Example:
+
+```bash
+mkdir -p ~/Code/github.com/way2freedom
+cd ~/Code/github.com/way2freedom
+git clone git@github.com:way2freedom/alphahelper.git
+cd alphahelper
+codex
+```
+
+Unless the standalone repo's own `README.md`, `AGENTS.md`, or service manifest says otherwise, do not install a thin skill, register MCP, run project setup/build, or copy it into `way2freedom/skills/projects`.
+
 This onboarding skill can guide all three:
 
 ```bash
