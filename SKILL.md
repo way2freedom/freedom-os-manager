@@ -1,7 +1,7 @@
 ---
 name: freedom-os-onboarding
-description: "Bootstrap a new way2freedom team member into Freedom OS from Codex or Hermes: Git/GitHub setup, repo clone, thin skill install, project runtime setup, and MCP registration."
-version: 0.1.0
+description: "Bootstrap a new way2freedom team member into Freedom OS from Codex or Hermes: Git/GitHub setup, repo clone, thin skill install, project runtime setup, MCP registration, update, and contribution workflow."
+version: 0.2.0
 type: pure-skill
 agents:
   - codex
@@ -11,18 +11,30 @@ capabilities:
   - git-setup
   - github-auth
   - skill-install
+  - project-install
   - mcp-registration
+  - contribution-workflow
 ---
 
 # Freedom OS Onboarding
 
-Use this skill when a new team member needs to set up Freedom OS on a fresh machine.
+Use this skill when a new team member needs to set up Freedom OS on a fresh machine, install a team capability, update the team repository, or modify and submit code.
+
+默认使用中文引导；如果用户使用英文，再切换英文。
 
 Default assumption: the user has Codex installed and logged in. If Hermes Agent is also installed, support it too. If both are available, install team skills and MCPs for both. If only one is available, install for that one.
 
-## Core rule
+## Core model
 
-Do not assume `npx skills add` makes a TypeScript project usable. Skill installation only installs the thin Agent Skill instructions. Project runtime still needs dependency install, setup, build, verification, and MCP registration.
+Freedom OS capabilities may have three layers:
+
+```text
+skills/<name>      thin Agent Skill instructions
+services/<name>    MCP/service registration docs and examples
+projects/<name>    source code, build, tests, runtime
+```
+
+Do not assume `npx skills add` makes a TypeScript project usable. Skill installation only installs instructions. Project runtime still needs dependency install, setup, build, verification, and MCP registration.
 
 ## Standard local paths
 
@@ -53,35 +65,20 @@ codex command  -> -a codex
 hermes command -> -a hermes-agent
 ```
 
-You may use:
+You may use this script from the onboarding repo:
 
 ```bash
 ./scripts/detect-agents.sh
 ```
 
-from this skill directory if the script is available after installation.
+## Generic install flow
 
-## Install flow
+For any capability `<name>` in the team repo:
 
 1. Check local agents.
 2. Check/install Git.
-3. Check Git identity:
-
-```bash
-git config --global user.name || true
-git config --global user.email || true
-```
-
-If missing, ask the user for name/email before setting them.
-
-4. Check GitHub access. Prefer `gh auth status`; otherwise use SSH test:
-
-```bash
-ssh -T git@github.com
-```
-
-If neither works, guide the user through `gh auth login` or SSH key creation. Never ask the user to paste a token into chat.
-
+3. Check Git identity and ask before setting missing name/email.
+4. Check GitHub access. Prefer `gh auth status`; otherwise use SSH test.
 5. Clone or update team repo:
 
 ```bash
@@ -95,45 +92,34 @@ git checkout v3
 git pull --ff-only
 ```
 
-6. Install the requested team thin skill to detected agents. For todo-dashboard:
+6. Install `skills/<name>` to detected agents when present.
+7. Prepare `projects/<name>` runtime when present.
+8. Register MCP from `projects/<name>` when available.
+9. Verify with real commands and summarize exact results.
 
-```bash
-npx skills add ./skills/todo-dashboard $(~/Code/github.com/way2freedom/freedom-os-onboarding/scripts/detect-agents.sh)
-```
+Detailed procedure: `references/capability-install.md`.
 
-If the script path is not available, build flags manually:
+For todo-dashboard: `references/todo-dashboard.md`.
 
-```bash
-# Codex only
-npx skills add ./skills/todo-dashboard -a codex
+## Update and contribution flow
 
-# Codex + Hermes
-npx skills add ./skills/todo-dashboard -a codex -a hermes-agent
-```
-
-7. Prepare project runtime if needed. For todo-dashboard, follow `references/todo-dashboard.md`.
-
-8. Verify with real commands and summarize exact results.
-
-## When installing todo-dashboard
-
-Follow:
+When the user asks to update, modify, commit, or push team code, follow:
 
 ```text
-references/todo-dashboard.md
+references/contribution-workflow.md
 ```
 
-Important distinctions:
+Key rules:
 
-```text
-skills/todo-dashboard   = thin Agent Skill
-services/todo-dashboard = thin MCP registration docs
-projects/todo-dashboard = actual TypeScript project/runtime
-```
+- Pull with `git pull --ff-only` before editing.
+- Do not commit or push unless the user explicitly asks.
+- Keep changes scoped to the task.
+- Run relevant verification before claiming done.
+- Never commit secrets, `.env`, tokens, cookies, personal local paths, or credentials.
 
 ## Safety boundaries
 
 - Do not hardcode GitHub tokens, Feishu tokens, OpenAI keys, profile names, local IPs, or personal account identifiers.
-- Do not commit or push in the team repo unless the user explicitly asks.
+- Do not ask the user to paste tokens, private keys, or passwords into chat.
 - Prefer preview/dry-run for MCP registration when available.
-- Ask before running commands that need sudo, install OS packages, overwrite config files, or change GitHub credentials.
+- Ask before running commands that need sudo, install OS packages, overwrite config files, change GitHub credentials, commit, or push.

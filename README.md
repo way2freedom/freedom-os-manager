@@ -1,8 +1,10 @@
 # Freedom OS Onboarding
 
+中文文档见：[README.zh-CN.md](README.zh-CN.md)。
+
 A public bootstrap Agent Skill for new way2freedom team members.
 
-This repository is intentionally small and public. New members install this skill first, then ask Codex or Hermes to use it to set up their local Freedom OS workspace.
+This repository is intentionally small and public. New members install this skill first, then ask Codex or Hermes to set up their local Freedom OS workspace.
 
 ## Quick start
 
@@ -25,6 +27,30 @@ Use the freedom-os-onboarding skill to install todo-dashboard.
 Detect my available agents automatically. If Git or GitHub access is missing, guide me step by step.
 ```
 
+## Generic capability model
+
+Freedom OS capabilities can have three layers:
+
+```text
+skills/<name>      thin Agent Skill instructions
+services/<name>    MCP/service registration docs and examples
+projects/<name>    source code, build, tests, runtime
+```
+
+This onboarding skill can guide all three:
+
+```bash
+./scripts/install-capability.sh todo-dashboard
+```
+
+The script:
+
+1. Clones or updates `way2freedom/skills`.
+2. Installs `skills/<name>` to detected agents.
+3. Prepares `projects/<name>` when present.
+4. Registers MCP for Codex when available.
+5. Prints Hermes MCP registration preview when Hermes exists.
+
 ## What this skill does
 
 It guides an agent through:
@@ -37,20 +63,25 @@ It guides an agent through:
 6. Installing requested thin skills into available agents.
 7. Preparing project runtime, for example `projects/todo-dashboard`.
 8. Registering MCP servers for Codex and/or Hermes.
-9. Verifying installation with real local commands.
+9. Updating the team repository safely.
+10. Committing and pushing changes only after explicit user request and verification.
 
 ## Repository layout
 
 ```text
-SKILL.md                     # bootstrap skill entrypoint
+SKILL.md                      bootstrap skill entrypoint
+README.zh-CN.md               Chinese onboarding guide
 references/
-  todo-dashboard.md          # todo-dashboard install flow
-  github-access.md           # GitHub auth guide
-  troubleshooting.md         # common setup issues
+  capability-install.md       generic skill/service/project installation flow
+  contribution-workflow.md    update, modify, verify, commit, push workflow
+  todo-dashboard.md           todo-dashboard install flow
+  github-access.md            GitHub auth guide
+  troubleshooting.md          common setup issues
 scripts/
-  detect-agents.sh           # prints npx-skills agent flags
-  install-team-skill.sh      # installs a skill to detected agents
-  bootstrap-todo-dashboard.sh # prepares todo-dashboard runtime and MCP
+  detect-agents.sh            prints npx-skills agent flags
+  install-team-skill.sh       installs a skill to detected agents
+  install-capability.sh       generic skill/project/MCP installer
+  bootstrap-todo-dashboard.sh compatibility wrapper for todo-dashboard
 ```
 
 ## Safety
@@ -59,3 +90,4 @@ scripts/
 - GitHub credentials are handled by `gh`, SSH, or Git credential helpers.
 - MCP registration is explicit and uses local CLI commands.
 - Project runtime setup happens only after the team repository is cloned locally.
+- Commits/pushes require explicit user instruction.
