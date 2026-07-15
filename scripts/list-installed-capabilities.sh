@@ -6,43 +6,156 @@ freedom_os_root="${FREEDOM_OS_ROOT:-/Users/winston/Code/github.com/way2freedom/f
 
 cd "$repo_root"
 
-echo "== Freedom OS Manager Registry =="
+echo "== Registry Check =="
 PYTHONPATH=src python3 -m freedom_os_manager.cli \
   --repo-root "$freedom_os_root" \
   capabilities check-installed || true
 echo
-PYTHONPATH=src python3 -m freedom_os_manager.cli capabilities list
-echo
 
-echo "== Local Agent Skills =="
-if [ -d "$HOME/.agents/skills" ]; then
-  find "$HOME/.agents/skills" -maxdepth 2 -name SKILL.md -print \
-    | sed "s#^$HOME/.agents/skills/##; s#/SKILL.md\$##" \
-    | sort
-else
-  echo "not found: $HOME/.agents/skills"
-fi
-echo
+echo "== Installed Capabilities By Platform =="
+python3 - "$repo_root/.freedom-os/registry/capabilities.json" <<'PY'
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
-echo "== Codex MCP =="
-if command -v codex >/dev/null 2>&1; then
-  codex mcp list
-else
-  echo "codex command not found"
-fi
-echo
 
-echo "== Hermes Skills =="
-if command -v hermes >/dev/null 2>&1; then
-  hermes skills list
-else
-  echo "hermes command not found"
-fi
-echo
+def run(command: list[str]) -> str:
+    if shutil.which(command[0]) is None:
+        return ""
+    result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=15)
+    if result.returncode != 0:
+        return ""
+    return result.stdout
 
-echo "== Hermes MCP =="
-if command -v hermes >/dev/null 2>&1; then
-  hermes mcp list
-else
-  echo "hermes command not found"
-fi
+
+def parse_codex_mcp(output: str) -> set[str]:
+    names: set[str] = set()
+    for line in output.splitlines():
+        if "WARNING:" in line or not line.strip() or line.lstrip().startswith("Name "):
+            continue
+        parts = line.split()
+        if len(parts) >= 4 and parts[-2] == "enabled":
+            names.add(parts[0])
+    return names
+
+
+def parse_hermes_skills(output: str) -> set[str]:
+    names: set[str] = set()
+    for line in output.splitlines():
+        if "│" not in line or "Name" in line:
+            continue
+        cols = [col.strip() for col in line.split("│")[1:-1]]
+        if len(cols) >= 5 and cols[2] == "local" and cols[4] == "enabled":
+            names.add(cols[0])
+    return names
+
+
+def parse_hermes_mcp(output: str) -> set[str]:
+    names: set[str] = set()
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("MCP Servers", "Name", "─")):
+            continue
+        parts = stripped.split()
+        if len(parts) >= 4 and parts[-1] == "enabled":
+            names.add(parts[0])
+    return names
+
+
+def platform_status(skill: bool, mcp: bool) -> str:
+    labels = []
+    if skill:
+        labels.append("skill")
+    if mcp:
+        labels.append("mcp")
+    return "+".join(labels) if labels else "-"
+
+
+def read_description(record: dict) -> str:
+    skill = record.get("paths", {}).get("skill")
+    install_dir = record.get("paths", {}).get("install_dir")
+    if not skill:
+        return ""
+    path = Path(skill)
+    if not path.is_absolute() and install_dir:
+        path = Path(install_dir) / skill
+    skill_md = path / "SKILL.md"
+    if not skill_md.exists():
+        return ""
+    in_frontmatter = False
+    for line in skill_md.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped == "---":
+            if not in_frontmatter:
+                in_frontmatter = True
+                continue
+            break
+        if in_frontmatter and stripped.startswith("description:"):
+            value = stripped.split(":", 1)[1].strip().strip("\"'")
+            return " ".join(value.split())
+    return ""
+
+
+def shorten(text: str, width: int = 48) -> str:
+    if len(text) <= width:
+        return text
+    return text[: max(0, width - 1)] + "…"
+
+
+registry_path = Path(sys.argv[1])
+if not registry_path.exists():
+    print(f"registry not found: {registry_path}")
+    raise SystemExit(0)
+
+records = json.loads(registry_path.read_text()).get("capabilities", {})
+local_skills = {path.parent.name for path in (Path.home() / ".agents" / "skills").glob("*/SKILL.md")}
+codex_mcp = parse_codex_mcp(run(["codex", "mcp", "list"]))
+hermes_skills = parse_hermes_skills(run(["hermes", "skills", "list"]))
+hermes_mcp = parse_hermes_mcp(run(["hermes", "mcp", "list"]))
+
+normal = []
+lark_names = []
+for name, record in sorted(records.items()):
+    if name.startswith("lark-"):
+        lark_names.append(name)
+        continue
+    codex = platform_status(name in local_skills, name in codex_mcp)
+    hermes = platform_status(name in hermes_skills or name in local_skills, name in hermes_mcp)
+    normal.append((name, record.get("type", "unknown"), codex, hermes, read_description(record)))
+
+print("{:<30} {:<16} {:<16} {:<16} {}".format("CAPABILITY", "TYPE", "CODEX", "HERMES", "DESCRIPTION"))
+for name, type_, codex, hermes, description in normal:
+    print("{:<30} {:<16} {:<16} {:<16} {}".format(name[:30], type_[:16], codex, hermes, shorten(description)))
+
+if lark_names:
+    codex_count = sum(1 for name in lark_names if name in local_skills)
+    hermes_count = sum(1 for name in lark_names if name in hermes_skills or name in local_skills)
+    print(
+        "{:<30} {:<16} {:<16} {}".format(
+            f"lark-* ({len(lark_names)})",
+            "pure-skill",
+            f"skill x{codex_count}" if codex_count else "-",
+            f"{f'skill x{hermes_count}' if hermes_count else '-':<16} Lark / Feishu local workflow skills",
+        )
+    )
+    print("  " + ", ".join(lark_names))
+
+extra_codex_mcp = sorted(codex_mcp - set(records))
+extra_hermes_mcp = sorted(hermes_mcp - set(records))
+if extra_codex_mcp or extra_hermes_mcp:
+    print()
+    print("== Other Registered MCP ==", flush=True)
+    print("{:<30} {:<16} {:<16} {:<16} {}".format("NAME", "TYPE", "CODEX", "HERMES", "DESCRIPTION"))
+    for name in sorted(set(extra_codex_mcp) | set(extra_hermes_mcp)):
+        print(
+            "{:<30} {:<16} {:<16} {:<16} {}".format(
+                name[:30],
+                "external",
+                "mcp" if name in extra_codex_mcp else "-",
+                "mcp" if name in extra_hermes_mcp else "-",
+                "external MCP",
+            )
+        )
+PY
