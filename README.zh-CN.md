@@ -157,6 +157,14 @@ MVP 行为：
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
 
+快速查看本机安装情况：
+
+```bash
+./scripts/list-installed-capabilities.sh
+```
+
+如果团队仓库不在默认路径，可以设置 `FREEDOM_OS_ROOT=/path/to/freedom-os`。
+
 ## 安全规则
 
 - 不要把 token、私钥、密码、Cookie 粘贴到聊天里。

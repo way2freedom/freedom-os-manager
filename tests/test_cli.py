@@ -116,18 +116,19 @@ class CliTests(unittest.TestCase):
             write(local_skills / "lark-task" / "SKILL.md")
 
             run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "scan"])
-            code, output = run_cli(
-                [
-                    "--repo-root",
-                    str(root),
-                    "--registry",
-                    str(registry),
-                    "capabilities",
-                    "sync-installed",
-                    "--local-skill-root",
-                    str(local_skills),
-                ]
-            )
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value=set()):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "sync-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
 
             self.assertEqual(code, 0)
             self.assertIn("Installed capabilities saved: 2", output)
@@ -147,52 +148,124 @@ class CliTests(unittest.TestCase):
             write(local_skills / "demo" / "SKILL.md")
             write(local_skills / "lark-task" / "SKILL.md")
 
-            code, output = run_cli(
-                [
-                    "--repo-root",
-                    str(root),
-                    "--registry",
-                    str(registry),
-                    "capabilities",
-                    "check-installed",
-                    "--local-skill-root",
-                    str(local_skills),
-                ]
-            )
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value=set()):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "check-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
             self.assertEqual(code, 1)
             self.assertIn("missing_in_registry=2", output)
 
-            code, output = run_cli(
-                [
-                    "--repo-root",
-                    str(root),
-                    "--registry",
-                    str(registry),
-                    "capabilities",
-                    "check-installed",
-                    "--local-skill-root",
-                    str(local_skills),
-                    "--fix",
-                ]
-            )
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value=set()):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "check-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                        "--fix",
+                    ]
+                )
             self.assertEqual(code, 0)
             self.assertIn("Installed capabilities saved: 2", output)
 
-            code, output = run_cli(
-                [
-                    "--repo-root",
-                    str(root),
-                    "--registry",
-                    str(registry),
-                    "capabilities",
-                    "check-installed",
-                    "--local-skill-root",
-                    str(local_skills),
-                ]
-            )
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value=set()):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "check-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
             self.assertEqual(code, 0)
             self.assertIn("matching=2", output)
             self.assertIn("missing_in_registry=0", output)
+
+    def test_sync_installed_includes_repo_mcp_without_local_skill(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repo"
+            local_skills = Path(temp_dir) / "installed-skills"
+            registry = Path(temp_dir) / ".freedom-os" / "registry" / "capabilities.json"
+            write(root / "skills" / "repo-only" / "SKILL.md")
+            write(root / "skills" / "blockbeats-feed" / "SKILL.md")
+            write(root / "services" / "blockbeats-feed" / "README.md")
+            write(root / "projects" / "blockbeats-feed" / "README.md")
+
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value={"blockbeats-feed"}):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "sync-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertIn("Installed capabilities saved: 1", output)
+            code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "status", "blockbeats-feed"])
+            self.assertEqual(code, 0)
+            self.assertIn("type: hybrid-service", output)
+            self.assertIn("registered: True", output)
+
+    def test_check_installed_ignores_external_mcp_not_in_repo_or_registry(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repo"
+            local_skills = Path(temp_dir) / "installed-skills"
+            registry = Path(temp_dir) / ".freedom-os" / "registry" / "capabilities.json"
+            write(root / "skills" / "demo" / "SKILL.md")
+            write(local_skills / "demo" / "SKILL.md")
+
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value={"node_repl"}):
+                run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "sync-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "check-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertIn("missing_in_registry=0", output)
+            self.assertNotIn("node_repl", output)
 
     def test_agent_adapter_turns_npx_timeout_into_failed_result(self):
         with mock.patch("freedom_os_manager.adapters.agents.subprocess.run", side_effect=TimeoutExpired(cmd=["npx"], timeout=30)):

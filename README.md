@@ -133,6 +133,14 @@ Run tests with:
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
 
+Quick local inventory:
+
+```bash
+./scripts/list-installed-capabilities.sh
+```
+
+Set `FREEDOM_OS_ROOT=/path/to/freedom-os` if the team repository is not at the default local path.
+
 ## Repository layout
 
 ```text

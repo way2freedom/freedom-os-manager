@@ -94,7 +94,9 @@ def cmd_sync_installed(registry: CapabilityRegistry, repo_root: Path, local_skil
 
 
 def cmd_check_installed(registry: CapabilityRegistry, repo_root: Path, local_skill_root: Path, *, fix: bool) -> int:
-    diff = compare_installed_registry(local_skill_root, registry.capabilities)
+    discovered = discover_capabilities(repo_root) if repo_root.exists() else []
+    known_mcp_names = {record["name"] for record in discovered} | set(registry.capabilities)
+    diff = compare_installed_registry(local_skill_root, registry.capabilities, known_mcp_names)
     print(f"Compared installed skills in {local_skill_root}")
     print(f"matching={len(diff['matching'])}")
     print_names("missing_in_registry", diff["missing_in_registry"])
