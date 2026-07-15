@@ -63,6 +63,24 @@ docs/standards/capability-registry.md
 
 第一版先把 schema 写在实现代码和本文档中，不急于标准化。
 
+## 3.1 安装状态模型
+
+Freedom OS 的本机安装状态按“源码”和“运行态副本”分开处理：
+
+```text
+repo/skills/<name>        源码真相，随 Git 版本管理
+~/.agents/skills/<name>   本机安装后的 Agent skill 运行态副本
+~/.hermes/skills/<name>   Hermes skill 入口，常见形态是指向 ~/.agents/skills/<name> 的软链接
+registry                  本机安装状态快照，不是源码，也不保存 secret
+```
+
+核心原则：
+
+- repo 中存在能力，只表示源码可用，不表示本机已经安装。
+- 本机 Agent 实际读取安装副本；修改 repo 后需要重新安装或同步，才会影响运行态。
+- Hermes 目录通常只是入口层，是否为软链接要按本机实测判断；不能把 `~/.hermes/skills/<name>` 当作唯一真相。
+- registry 只记录本机状态快照，`sync-installed` 以本机安装目录为准，`check-installed` / `SYNC` 用于发现 registry 和安装副本差异，以及安装副本和 repo 源码漂移。
+
 ## 4. Registry Schema 草案
 
 单个能力记录：

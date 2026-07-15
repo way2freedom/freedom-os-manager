@@ -121,6 +121,17 @@ git push origin <branch>
 
 该路径已被 Git 忽略，用来记录本机发现的能力、安装状态、分层状态和 doctor 检查结果，不保存 secret。
 
+安装模型原则：
+
+```text
+repo/skills/<name>        源码真相，随 Git 版本管理
+~/.agents/skills/<name>   本机安装后的 Agent skill 运行态副本
+~/.hermes/skills/<name>   Hermes skill 入口，常见形态是指向 ~/.agents/skills/<name> 的软链接
+registry                  本机安装状态快照，不是源码，也不保存 secret
+```
+
+因此，仓库里的能力不等于已安装能力；本机运行时读取的是安装副本。修改 repo 后需要重新安装或同步，`check-installed` / 快速清单里的 `SYNC` 用来发现安装副本和 repo 源码之间的漂移。
+
 在本仓库根目录运行：
 
 ```bash

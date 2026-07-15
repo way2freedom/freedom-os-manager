@@ -97,6 +97,17 @@ The registry stores local machine state in:
 
 That path is ignored by Git. It records discovered capabilities, install state, layered status, and last doctor results without storing secrets.
 
+Installed-state model:
+
+```text
+repo/skills/<name>        source of truth, versioned by Git
+~/.agents/skills/<name>   local installed runtime copy for Agent skills
+~/.hermes/skills/<name>   Hermes skill entry, commonly a symlink to ~/.agents/skills/<name>
+registry                  local installed-state snapshot, not source code and not a secret store
+```
+
+Repository capabilities are not automatically installed capabilities. Runtime agents read the installed copy, so repo changes need reinstalling or syncing before they affect the active local skill. `check-installed` and the quick inventory `SYNC` column are used to detect drift between the installed copy and repository source.
+
 Run from this repository:
 
 ```bash
