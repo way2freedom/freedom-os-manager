@@ -1,7 +1,7 @@
 ---
 name: freedom-os-manager
 description: "Use first for Freedom OS / way2freedom setup and capability installation from Codex or Hermes: Git/GitHub setup, repo clone/update, thin skill install, project runtime setup, MCP registration, update, and contribution workflow."
-version: 0.2.0
+version: 0.2.1
 type: pure-skill
 agents:
   - codex
@@ -112,6 +112,26 @@ PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/w
 ```
 
 10. Verify with real commands and summarize exact results. Do not treat a capability as installed until the runtime and registry state have both been checked.
+
+To quickly query current local installs across Codex and Hermes, use Freedom OS Manager instead of manually inspecting each agent config:
+
+```bash
+PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities list-installed
+```
+
+For scripts or downstream tools that need machine-readable output, request JSON:
+
+```bash
+PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities list-installed --json
+```
+
+The repo compatibility wrapper is also available:
+
+```bash
+./scripts/list-installed-capabilities.sh --json
+```
+
+The report includes registry drift counts, Codex/Hermes skill and MCP status, runtime-only installs, grouped `lark-*` skills, external MCPs, and short descriptions.
 
 Detailed procedure: `references/capability-install.md`.
 

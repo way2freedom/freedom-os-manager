@@ -8,6 +8,7 @@ from typing import Any
 from .adapters import agents, hermes
 from .doctor import run_doctor
 from .installed import DEFAULT_LOCAL_SKILL_ROOT, compare_installed_registry, discover_installed_skills
+from .installed_report import render_installed_report, render_installed_report_json
 from .models import now_iso
 from .registry import DEFAULT_REGISTRY_PATH, CapabilityRegistry
 from .scanner import discover_capabilities
@@ -27,6 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
         check_installed = command.add_parser("check-installed")
         check_installed.add_argument("--local-skill-root", default=str(DEFAULT_LOCAL_SKILL_ROOT), help="Local installed skill root.")
         check_installed.add_argument("--fix", action="store_true", help="Replace registry installed list with the local installed skill snapshot.")
+        for installed_name in ("list-installed", "installed"):
+            installed = command.add_parser(installed_name)
+            installed.add_argument("--local-skill-root", default=str(DEFAULT_LOCAL_SKILL_ROOT), help="Local installed skill root.")
+            installed.add_argument("--json", action="store_true", help="Print installed capability report as JSON.")
         command.add_parser("list")
         status = command.add_parser("status")
         status.add_argument("name")
@@ -54,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_sync_installed(registry, repo_root, Path(args.local_skill_root))
     if args.command == "check-installed":
         return cmd_check_installed(registry, repo_root, Path(args.local_skill_root), fix=args.fix)
+    if args.command in {"list-installed", "installed"}:
+        return cmd_list_installed(registry, repo_root, Path(args.local_skill_root), json_output=args.json)
     if args.command == "list":
         return cmd_list(registry)
     if args.command == "status":
@@ -128,6 +135,14 @@ def cmd_check_installed(registry: CapabilityRegistry, repo_root: Path, local_ski
         cmd_sync_installed(registry, repo_root, local_skill_root)
         return 0
     return 1 if has_diff else 0
+
+
+def cmd_list_installed(registry: CapabilityRegistry, repo_root: Path, local_skill_root: Path, *, json_output: bool) -> int:
+    discovered = discover_capabilities(repo_root) if repo_root.exists() else []
+    known_mcp_names = {record["name"] for record in discovered} | set(registry.capabilities)
+    render = render_installed_report_json if json_output else render_installed_report
+    print(render(registry.capabilities, local_skill_root=local_skill_root, known_mcp_names=known_mcp_names), end="")
+    return 0
 
 
 def print_names(label: str, names: list[str]) -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -308,6 +309,91 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("type: hybrid-service", output)
             self.assertIn("registered: True", output)
+
+    def test_list_installed_renders_platform_table(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repo"
+            local_skills = Path(temp_dir) / "installed-skills"
+            registry = Path(temp_dir) / ".freedom-os" / "registry" / "capabilities.json"
+            write(root / "skills" / "demo" / "SKILL.md", "---\nname: demo\ndescription: >\n  Demo capability\n---\n")
+            write(root / "services" / "demo" / "README.md")
+            write(local_skills / "demo" / "SKILL.md", "---\nname: demo\ndescription: Demo capability\n---\n")
+            write(local_skills / "lark-task" / "SKILL.md")
+
+            with mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value={"demo"}):
+                run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "sync-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
+
+            command_output = {
+                ("codex", "mcp", "list"): "Name Command Args Env Status\ndemo x y enabled ok\nexternal x y enabled ok\n",
+                ("hermes", "skills", "list"): "│ Name │ Version │ Source │ Path │ Status │\n│ lark-task │ - │ local │ /tmp/lark-task │ enabled │\n",
+                ("hermes", "mcp", "list"): "MCP Servers\nName Command Args Status\ndemo x y enabled\n",
+            }
+
+            def fake_run(command: list[str]) -> str:
+                return command_output.get(tuple(command), "")
+
+            with (
+                mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value={"demo"}),
+                mock.patch("freedom_os_manager.installed_report.run", side_effect=fake_run),
+            ):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "list-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                    ]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertIn("== Registry Check ==", output)
+            self.assertIn("CAPABILITY", output)
+            self.assertIn("demo", output)
+            self.assertIn("skill+mcp", output)
+            self.assertIn("Demo capability", output)
+            self.assertIn("lark-* (1)", output)
+            self.assertIn("external", output)
+
+            with (
+                mock.patch("freedom_os_manager.installed.installed_mcp_names", return_value={"demo"}),
+                mock.patch("freedom_os_manager.installed_report.run", side_effect=fake_run),
+            ):
+                code, output = run_cli(
+                    [
+                        "--repo-root",
+                        str(root),
+                        "--registry",
+                        str(registry),
+                        "capabilities",
+                        "list-installed",
+                        "--local-skill-root",
+                        str(local_skills),
+                        "--json",
+                    ]
+                )
+
+            self.assertEqual(code, 0)
+            payload = json.loads(output)
+            self.assertEqual(payload["registry_check"]["counts"]["missing_in_registry"], 0)
+            self.assertEqual(payload["capabilities"][0]["name"], "demo")
+            self.assertTrue(payload["capabilities"][0]["codex"]["skill"])
+            self.assertEqual(payload["lark_group"]["count"], 1)
+            self.assertEqual(payload["external_mcp"][0]["name"], "external")
 
     def test_check_installed_ignores_external_mcp_not_in_repo_or_registry(self):
         with tempfile.TemporaryDirectory() as temp_dir:
