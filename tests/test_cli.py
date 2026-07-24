@@ -22,7 +22,7 @@ class CliTests(unittest.TestCase):
     def test_cli_scan_list_status_doctor_install_uninstall(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            write(root / "skills" / "freedom-os-manager" / "SKILL.md")
+            write(root / "skills" / "freedom-os-launcher" / "SKILL.md")
             registry = root / ".freedom-os" / "registry" / "capabilities.json"
 
             code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "scan"])
@@ -31,25 +31,25 @@ class CliTests(unittest.TestCase):
 
             code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "cap", "list"])
             self.assertEqual(code, 0)
-            self.assertIn("freedom-os-manager", output)
+            self.assertIn("freedom-os-launcher", output)
 
-            code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "status", "freedom-os-manager"])
+            code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "status", "freedom-os-launcher"])
             self.assertEqual(code, 0)
             self.assertIn("runtime:", output)
 
             with mock.patch("freedom_os_manager.doctor.hermes.skill_installed", return_value=(False, "hermes command not found")):
-                code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "doctor", "freedom-os-manager"])
+                code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "doctor", "freedom-os-launcher"])
             self.assertEqual(code, 1)
             self.assertIn("skill_file", output)
             self.assertIn("doctor_status=failed", output)
 
             with mock.patch("freedom_os_manager.cli.agents.available_agents", return_value=["codex", "hermes"]):
-                code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "install", "freedom-os-manager", "--dry-run"])
+                code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "install", "freedom-os-launcher", "--dry-run"])
             self.assertEqual(code, 0)
             self.assertIn("dry_run=true", output)
             self.assertIn("-a codex -a hermes-agent", output)
 
-            code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "uninstall", "freedom-os-manager"])
+            code, output = run_cli(["--repo-root", str(root), "--registry", str(registry), "capabilities", "uninstall", "freedom-os-launcher"])
             self.assertEqual(code, 0)
             self.assertIn("preview=true", output)
             self.assertIn("No source files", output)

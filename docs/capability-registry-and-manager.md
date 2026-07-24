@@ -1,7 +1,7 @@
 # Freedom OS Capability Registry 与 Manager 扩展方案
 
-> 状态：讨论 / Codex 实施前设计稿  
-> 目标：把 `freedom-os-manager` 从“Freedom OS 安装引导”扩展为轻量的本机能力生命周期管理入口。
+> 状态：历史讨论 / 旧设计稿  
+> 说明：这份文档记录的是 `freedom-os-manager` 早期想法，当前仓库已经改为 **Freedom OS Launcher**，不再把自己定位为本机能力生命周期管理入口。
 
 ## 1. 背景
 
@@ -25,6 +25,8 @@ docs/        架构、路线图、标准和讨论
 因此需要一个轻量的本机 Capability Registry，由 `freedom-os-manager` 维护。
 
 ## 2. 定位
+
+> 这部分保留历史上下文，当前 launcher 不再承担这些职责。
 
 `freedom-os-manager` 的新增职责：
 

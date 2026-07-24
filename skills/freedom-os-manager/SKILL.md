@@ -1,7 +1,7 @@
 ---
-name: freedom-os-manager
-description: "Use first for Freedom OS / way2freedom setup and capability installation from Codex or Hermes: Git/GitHub setup, repo clone/update, thin skill install, project runtime setup, MCP registration, update, and contribution workflow."
-version: 0.2.1
+name: freedom-os-launcher
+description: "Use first for Freedom OS launch/bootstrap work: prepare the local environment, clone or update way2freedom/freedom-os, and hand off to the main repository."
+version: 0.2.2
 type: pure-skill
 agents:
   - codex
@@ -10,37 +10,32 @@ capabilities:
   - onboarding
   - git-setup
   - github-auth
-  - skill-install
-  - project-install
-  - mcp-registration
-  - contribution-workflow
+  - repository-bootstrap
 ---
 
-# Freedom OS Manager
+# Freedom OS Launcher
 
-Use this skill first when a user asks to set up Freedom OS, install or update a way2freedom/Freedom OS skill or capability, prepare a team repo, register MCPs, or modify and submit team code.
+Use this skill first when a user asks to set up a new Freedom OS workspace, prepare the local machine for Freedom OS work, or clone/update the `way2freedom/freedom-os` main repository.
 
-This routing rule is intentional: if the request mentions Freedom OS, way2freedom, a team capability name under `skills/<name>`, or installing a team skill for Codex/Hermes, start here before using generic skill installers or ad hoc file copies.
+This skill is intentionally narrow. It is a launcher, not the place for ongoing capability installation, MCP registration, or project runtime orchestration.
 
 默认使用中文引导；如果用户使用英文，再切换英文。
 
-Default assumption: the user has Codex installed and logged in. If Hermes Agent is also installed, support it too. If both are available, install team skills and MCPs for both. If only one is available, install for that one.
-
 ## Core model
 
-Freedom OS capabilities may have three layers:
+This launcher only prepares the local environment and hands the user off to the main repository.
 
-```text
-skills/<name>      thin Agent Skill instructions
-services/<name>    MCP/service registration docs and examples
-projects/<name>    source code, build, tests, runtime
-```
+It may:
 
-Some team projects are intentionally just standalone repositories, not Freedom OS hybrid capabilities. For these simple repo projects, do not force the `skills/services/projects` model. The onboarding job is only to clone the repository into the standard workspace, tell the user how to open that folder in Codex, and then guide update/commit/push workflow from inside that repository.
+- detect Codex and Hermes availability
+- check Git, GitHub auth, Node, Corepack, and pnpm
+- help configure Git identity when missing
+- clone or update `~/Code/github.com/way2freedom/freedom-os`
+- tell the user what to do next inside the main repository
 
-Do not assume `npx skills add` makes a TypeScript project usable. Skill installation only installs instructions. Project runtime still needs dependency install, setup, build, verification, and MCP registration.
+It does not own downstream capability installation, runtime setup, or MCP registration as a primary responsibility.
 
-## Standard local paths
+## Standard local path
 
 Use this default team path unless the user asks otherwise:
 
@@ -69,125 +64,40 @@ codex command  -> -a codex
 hermes command -> -a hermes-agent
 ```
 
-You may use this script from the onboarding repo:
+You may use this script from the launcher repo:
 
 ```bash
 ./scripts/detect-agents.sh
 ```
 
-## Generic install flow
+## Bootstrap flow
 
-For any capability `<name>` in the team repo:
+When the user asks to prepare a Freedom OS workspace:
 
 1. Check local agents.
 2. Check/install Git.
 3. Check Git identity and ask before setting missing name/email.
 4. Check GitHub access. Prefer `gh auth status`; otherwise use SSH test.
-5. Clone or update team repo:
+5. Clone or update the main repository:
 
 ```bash
 mkdir -p ~/Code/github.com/way2freedom
 cd ~/Code/github.com/way2freedom
-if [ ! -d skills/.git ]; then
+if [ ! -d freedom-os/.git ]; then
   git clone git@github.com:way2freedom/freedom-os.git
 fi
-cd skills
-git checkout v3
+cd freedom-os
 git pull --ff-only
 ```
 
-6. Install `skills/<name>` to detected agents when present. If both Codex and Hermes are present, install to both in one command:
+6. Hand the user off to the `way2freedom/freedom-os` repository for capability-specific work.
 
-```bash
-npx skills add ./skills/<name> -a codex -a hermes-agent
-```
-7. Prepare `projects/<name>` runtime when present.
-8. Register MCP from `projects/<name>` when available.
-9. Record every completed install through Freedom OS Manager registry. Do this for skill, MCP, hybrid, and project-only capabilities:
+## When to stop
 
-```bash
-PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities install <name>
-PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities check-installed --fix
-PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities check-installed
-```
+Stop after the environment is ready and the main repository is cloned or updated.
 
-10. Verify with real commands and summarize exact results. Do not treat a capability as installed until the runtime and registry state have both been checked.
-
-To quickly query current local installs across Codex and Hermes, use Freedom OS Manager instead of manually inspecting each agent config:
-
-```bash
-PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities list-installed
-```
-
-For scripts or downstream tools that need machine-readable output, request JSON:
-
-```bash
-PYTHONPATH=src python3 -m freedom_os_manager.cli --repo-root ~/Code/github.com/way2freedom/freedom-os capabilities list-installed --json
-```
-
-The repo compatibility wrapper is also available:
-
-```bash
-./scripts/list-installed-capabilities.sh --json
-```
-
-The report includes registry drift counts, Codex/Hermes skill and MCP status, runtime-only installs, grouped `lark-*` skills, external MCPs, and short descriptions.
-
-Detailed procedure: `references/capability-install.md`.
-
-For todo-dashboard: `references/todo-dashboard.md`.
-
-## Simple standalone repo flow
-
-Use this for projects like `alphahelper` when the user only needs a local checkout and Codex development guidance.
-
-1. Check Git and GitHub access.
-2. Clone the standalone repo into the standard workspace:
-
-```bash
-mkdir -p ~/Code/github.com/way2freedom
-cd ~/Code/github.com/way2freedom
-git clone git@github.com:way2freedom/<repo>.git
-```
-
-3. Tell the user to open that folder in Codex:
-
-```bash
-cd ~/Code/github.com/way2freedom/<repo>
-codex
-```
-
-4. For future updates:
-
-```bash
-git status --short
-git pull --ff-only
-```
-
-5. For code changes, follow `references/contribution-workflow.md` in that repo context: inspect status, edit scoped files, run relevant verification, then commit/push only when the user explicitly asks.
-
-Do not install a thin skill, register MCP, or run project setup unless the standalone repo's README/AGENTS/service manifest explicitly says that is required.
+Do not continue into arbitrary capability installation, MCP registration, or project runtime setup unless the main repository explicitly asks for that work.
 
 ## Update and contribution flow
 
-When the user asks to update, modify, commit, or push team code, follow:
-
-```text
-references/contribution-workflow.md
-```
-
-Key rules:
-
-- Pull with `git pull --ff-only` before editing.
-- Do not commit or push unless the user explicitly asks.
-- Keep changes scoped to the task.
-- Keep Chinese documentation synchronized with English documentation. When updating `README.md` or other user-facing English docs, update `README.zh-CN.md` or the corresponding Chinese section in the same change.
-- Run relevant verification before claiming done.
-- Never commit secrets, `.env`, tokens, cookies, personal local paths, or credentials.
-
-## Safety boundaries
-
-- Do not hardcode GitHub tokens, Feishu tokens, OpenAI keys, profile names, local IPs, or personal account identifiers.
-- Do not ask the user to paste tokens, private keys, or passwords into chat.
-- Prefer preview/dry-run for MCP registration when available.
-- Ask before running commands that need sudo, install OS packages, overwrite config files, change GitHub credentials, commit, or push.
+When the user asks to update, modify, commit, or push launcher code, follow the repo's contribution workflow and keep changes scoped.
